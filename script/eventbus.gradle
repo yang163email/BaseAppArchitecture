@@ -1,0 +1,21 @@
+// 此文件用于 eventbus 3 通过编译时动态注入相关 @Subscribe 注解的函数，相比于之前版本所用到的反射机制来说，最大化提升性能
+// 链接详情:  http://greenrobot.org/eventbus/documentation/subscriber-index/
+// 如果需要使用此文件，则需要在对应的子 module 中加入
+// apply from: '../eventbus.gradle'
+// 并且在使用前调用 EventBus.builder().addIndex(MyEventBusIndex()).installDefaultEventBus(), 只需要初始化一次即可
+// 后面即可直接使用 EventBus.getDefault()
+
+apply plugin: 'kotlin-kapt' // ensure kapt plugin is applied
+
+dependencies {
+    implementation 'org.greenrobot:eventbus:3.1.1'
+    //kapt 'org.greenrobot:eventbus-annotation-processor:3.1.1'
+}
+
+kapt {
+    arguments {
+        // 第一个参数固定，不可以改变
+        // 第二个参数为生成的类名全路径，可以自定义
+        arg('eventBusIndex', 'com.parcelsanta.event.MyEventBusIndex')
+    }
+}

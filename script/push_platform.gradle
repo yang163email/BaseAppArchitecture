@@ -1,0 +1,46 @@
+import java.util.regex.Matcher
+import java.util.regex.Pattern
+
+//afterEvaluate {
+////    preBuild.doFirst {
+////        selectPushPlugin()
+////    }
+//    preBuild.dependsOn myTask
+//}
+//    preBuild.doFirst {
+//        selectPushPlugin()
+//    }
+task selectPushPluginTask(type: Copy) {
+    selectPushPlugin()
+}
+
+private String getCurrentFlavorName() {
+    String currentFlavorName = ''
+    String tskReqStr = gradle.getStartParameter().getTaskRequests().toString()
+
+    Pattern pattern
+
+    if (tskReqStr.contains("assemble"))
+        pattern = Pattern.compile("assemble(\\w+)(Release|Debug|Profile)")
+    else
+        pattern = Pattern.compile("generate(\\w+)(Release|Debug|Profile)")
+
+    Matcher matcher = pattern.matcher(tskReqStr)
+
+    if (matcher.find())
+        currentFlavorName = matcher.group(1).toLowerCase() // Changing to 2 will return build type, 1 provides product flavor
+     else
+        println "getCurrentFlavorName: NO MATCH FOUND"
+
+    return currentFlavorName
+}
+
+private void selectPushPlugin() {
+    String flavorName = getCurrentFlavorName()
+    println "Current flavor name is $flavorName"
+    if (flavorName == 'huawei') {
+        apply plugin: 'com.huawei.agconnect'
+    } else if (flavorName == 'google') {
+        apply plugin: 'com.google.gms.google-services'
+    }
+}

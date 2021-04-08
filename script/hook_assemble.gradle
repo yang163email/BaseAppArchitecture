@@ -1,0 +1,113 @@
+import java.util.regex.Matcher
+import java.util.regex.Pattern
+
+
+project.ext.appName = 'AppName'
+
+afterEvaluate {
+    hookDebug()
+    hookRelease()
+    hookProfile()
+}
+
+private void hookDebug() {
+    hookPackage("debug")
+}
+
+private void hookRelease() {
+    hookPackage("release")
+}
+
+private void hookProfile() {
+    hookPackage("profile")
+}
+
+private void hookPackage(String buildType) {
+    if (buildType == null || buildType.isEmpty()) return
+
+    def firstChar = buildType[0]
+    def endsWithStr = buildType.replaceFirst(firstChar, firstChar.toUpperCase())
+
+    def tasks = tasks.findAll {
+        return it.name.startsWith("package") && it.name.endsWith(endsWithStr)
+    }
+    println "found tasks: $tasks"
+
+    tasks.forEach {
+        it.doLast {
+            copyApkFile(buildType)
+        }
+    }
+}
+
+private void copyApkFile(String buildType) {
+    def versionName = android.defaultConfig.versionName
+    def versionCode = android.defaultConfig.versionCode
+
+    String currentFlavorName = getCurrentFlavorName()
+
+    android.applicationVariants.all { variant ->
+
+        def flavorName0 = variant.flavorName
+        if (currentFlavorName != flavorName0) return;
+
+        variant.outputs.all { output ->
+            def outputFile = output.outputFile
+            if (variant.buildType.name == buildType && outputFile.name.endsWith('.apk')) {
+
+                def date = new Date().format("yyyyMMdd-HHmmss")
+
+                String flavorName = variant.flavorName
+                if (flavorName != null && !flavorName.isEmpty()) {
+                    flavorName = "-" + flavorName
+                }
+
+                def buildTypeName = variant.buildType.name
+
+                def oldApkFiles = outputFile.parentFile.listFiles(new FilenameFilter() {
+                    @Override
+                    boolean accept(File dir, String name) {
+                        if (name.startsWith(project.name) && name.endsWith('.apk')) return false
+                        return name.startsWith(project.appName) && name.endsWith('.apk')
+                    }
+                })
+                println "oldApkFiles: $oldApkFiles"
+                if (oldApkFiles != null) {
+                    delete(oldApkFiles)
+                }
+
+                copy {
+                    from outputFile
+                    into outputFile.parentFile
+                    rename {
+                        project.appName + "-$buildTypeName" +
+                                flavorName +
+                                "-v$versionName" + "+$versionCode" +
+                                "-$date" + ".apk"
+                    }
+                }
+            }
+        }
+    }
+}
+
+String getCurrentFlavorName() {
+    String currentFlavorName = ''
+    String tskReqStr = gradle.getStartParameter().getTaskRequests().toString()
+
+    Pattern pattern
+
+    if (tskReqStr.contains("assemble"))
+        pattern = Pattern.compile("assemble(\\w+)(Release|Debug)")
+    else
+        pattern = Pattern.compile("generate(\\w+)(Release|Debug)")
+
+    Matcher matcher = pattern.matcher(tskReqStr)
+
+    if (matcher.find())
+        currentFlavorName = matcher.group(1).toLowerCase() // Changing to 2 will return build type, 1 provides product flavor
+    else
+        println "NO MATCH FOUND"
+
+    return currentFlavorName
+}

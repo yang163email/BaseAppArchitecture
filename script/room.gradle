@@ -1,0 +1,18 @@
+// 此文件用于 room 通过编译时动态注入相关配置
+// 如果需要使用此文件，则需要在对应的子 module 中加入
+// apply from: '../room.gradle'
+
+apply plugin: 'kotlin-kapt' // ensure kapt plugin is applied
+
+dependencies {
+    // room
+    api "androidx.room:room-runtime:$room_version"
+    api "androidx.room:room-ktx:$room_version"
+    kapt "androidx.room:room-compiler:$room_version"
+}
+
+kapt {
+    arguments {
+        arg("room.schemaLocation", "$projectDir/schemas".toString())
+    }
+}
